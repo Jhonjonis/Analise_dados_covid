@@ -1,0 +1,221 @@
+# Guia Completo do Projeto BigData com Spark + Docker
+
+Este documento reúne **todos os passos**, explicações, correções e procedimentos realizados no projeto até o momento, organizados de forma cronológica, detalhada e clara.
+
+---
+
+## 1. Objetivo do Projeto
+
+Montar um ambiente distribuído de Big Data com:
+
+* **Spark Master** + **2 Spark Workers**
+* Cada worker com **1 core** e **512 MB de RAM**
+* Execução em **Docker + Docker Compose** dentro do **WSL**
+* Estrutura de projeto organizada:
+
+  * `spark/src` → código dos jobs
+  * `data/raw/dados` → arquivos CSV
+  * `spark/output` → resultados gerados
+  * `scripts/` → scripts de execução
+
+---
+
+## 2. Estrutura de Pastas Criada
+
+Você organizou o projeto da seguinte forma:
+
+```
+projeto-bigdata/
+├─ data/
+│  ├─ raw/dados
+│  ├─ external
+│  ├─ processed
+│  └─ analytics
+├─ spark/
+│  ├─ Dockerfile
+│  ├─ requirements.txt
+│  ├─ output/
+│  └─ src/
+│     ├─ jobs/
+│     └─ utils/
+├─ scripts/
+├─ workspace/
+└─ docker-compose.yml
+```
+
+---
+
+## 3. Requisitos do Ambiente
+
+Você configurou ou confirmou:
+
+* Docker Desktop instalado
+* WSL2 com Ubuntu
+* Projeto movido para dentro do WSL (`~/projeto-bigdata`) para evitar conflitos com OneDrive
+
+---
+
+## 4. Criação dos Arquivos Principais
+
+### 4.1 requirements.txt
+
+Arquivo contendo bibliotecas Python do Spark:
+
+* pyspark
+* pandas
+* numpy
+* matplotlib
+* seaborn
+* plotly
+
+### 4.2 Dockerfile
+
+Criação de uma imagem customizada baseada em:
+
+```
+apache/spark:3.5.1
+```
+
+Incluiu:
+
+* Instalação de dependências Python
+* Criação dos diretórios internos da imagem
+* Copia do entrypoint
+
+### 4.3 entrypoint.sh
+
+Script que inicia corretamente o Master ou Worker com:
+
+* `start-master.sh` ou `start-worker.sh`
+* `tail -f` para manter container ativo
+
+---
+
+## 5. Criação do docker-compose.yml
+
+Você montou o cluster distribuído com 4 serviços:
+
+* **spark-base** (imagem buildada)
+* **spark-master**
+* **spark-worker-1**
+* **spark-worker-2**
+
+Volumes montados:
+
+* `./spark/src:/opt/spark/app`
+* `./spark/output:/opt/spark/output`
+* `./data:/opt/spark/data`
+
+Configurações dos workers:
+
+```
+SPARK_WORKER_CORES=1
+SPARK_WORKER_MEMORY=512m
+```
+
+---
+
+## 6. Erros Encontrados e Soluções
+
+### 6.1 "ModuleNotFoundError: No module named pyspark"
+
+**Causa:** pyspark não instalado dentro da imagem.
+**Solução:** instalar via `requirements.txt` no Dockerfile.
+
+### 6.2 Erros com imagens Bitnami
+
+**Causa:** imagens não existiam.
+**Solução:** usar imagem oficial `apache/spark:3.5.1`.
+
+### 6.3 Erro de mount: "not a directory"
+
+**Causa:** `spark/output` era um **arquivo**, não pasta.
+**Solução:**
+
+```
+rm spark/output
+mkdir spark/output
+```
+
+### 6.4 Containers iniciavam e encerravam (Exited 0)
+
+**Causa:** nenhum processo mantinha o container vivo.
+**Solução:** adicionar `tail -f /dev/null` no entrypoint.
+
+### 6.5 Problemas com pastas no OneDrive
+
+**Causa:** conflitos de permissionamento e sync.
+**Solução:** mover projeto para `~/projeto-bigdata`.
+
+---
+
+## 7. Comandos Executados (Histórico Geral)
+
+```
+cd ~/projeto-bigdata
+mkdir -p data/raw/dados
+mkdir -p spark/output
+mkdir -p spark/src
+
+docker-compose down -v
+docker-compose build --no-cache
+docker-compose up -d
+
+docker ps
+docker ps -a
+docker logs spark-master --tail=200
+docker exec -it spark-master bash
+
+spark-submit /opt/spark/app/src/jobs/etl_covid.py
+```
+
+---
+
+## 8. Testes dentro do Master
+
+Dentro do container:
+
+```
+pyspark --master spark://spark-master:7077
+```
+
+Ou execução dos jobs:
+
+```
+spark-submit --master spark://spark-master:7077 \
+  /opt/spark/app/src/jobs/etl_covid.py
+```
+
+---
+
+## 9. Acesso ao Spark UI
+
+A interface web do Master fica disponível em:
+
+```
+http://localhost:8080
+```
+
+---
+
+## 10. Próximos Passos
+
+* Executar os scripts automáticos do pipeline
+* Criar jobs adicionais
+* Testar reparticionamento e uso de memória
+* Salvar dados transformados em parquet no `spark/output`
+
+---
+
+## 11. Status Atual do Projeto
+
+* Estrutura organizada
+* Dockerfile configurado
+* entrypoint funcional
+* docker-compose sobe Master + Workers corretamente
+* Volumes montados de forma estável
+* Projeto executando dentro do WSL sem conflitos
+
+---
+
+
