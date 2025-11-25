@@ -37,7 +37,7 @@ services:
       SPARK_MODE: worker
       SPARK_MASTER_URL: spark://spark-master:7077
       SPARK_WORKER_CORES: 1
-      SPARK_WORKER_MEMORY: 512m
+      SPARK_WORKER_MEMORY: 2g
     volumes:
       - ./spark/output:/opt/spark/output
       - ./data:/opt/spark/data
@@ -58,7 +58,28 @@ services:
       SPARK_MODE: worker
       SPARK_MASTER_URL: spark://spark-master:7077
       SPARK_WORKER_CORES: 1
-      SPARK_WORKER_MEMORY: 512m
+      SPARK_WORKER_MEMORY: 2g
+    volumes:
+      - ./spark/output:/opt/spark/output
+      - ./data:/opt/spark/data
+    depends_on:
+      - spark-master
+    command: >
+      bash -c "
+      /opt/spark/sbin/start-worker.sh spark://spark-master:7077 &&
+      tail -f /dev/null
+      "
+    networks:
+      - spark-net
+
+  spark-worker-3:
+    image: spark:3.5.1
+    container_name: spark-worker-3
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_CORES: 1
+      SPARK_WORKER_MEMORY: 2g
     volumes:
       - ./spark/output:/opt/spark/output
       - ./data:/opt/spark/data
